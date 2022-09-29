@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 func sendRequest(id, course string) bool {
@@ -17,23 +19,46 @@ func sendRequest(id, course string) bool {
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
 	req.Header.Add("cache-control", "no-cache")
 
-	res, _ := http.DefaultClient.Do(req)
-
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Println(err.Error())
+		return sendRequest(id, course)
+	}
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
 	return strings.Contains(string(body), "("+course+")")
 }
 
+type result struct {
+	lock sync.Mutex
+	list []string
+	wg   sync.WaitGroup
+}
+
+func recieveResponse(id, course string, res *result, guard chan struct{}) {
+	if sendRequest(id, course) {
+		res.lock.Lock()
+		res.list = append(res.list, id)
+		res.lock.Unlock()
+	}
+	<-guard
+	res.wg.Done()
+}
+
 func main() {
 	course := "4011430107601" //Software Testing course
-	var list []string
+	var res result
+	maxParallelReqs := 10
+	guard := make(chan struct{}, maxParallelReqs)
+
 	for i := 1; i < 115; i++ {
-		fmt.Println(i)
 		id := fmt.Sprintf("98243%03d", i)
-		if sendRequest(id, course) {
-			list = append(list, id)
-		}
+		fmt.Println(id)
+		res.wg.Add(1)
+		guard <- struct{}{}
+		go recieveResponse(id, course, &res, guard)
 	}
 
-	fmt.Println(list)
+	res.wg.Wait()
+	fmt.Println(res.list)
 }
