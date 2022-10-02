@@ -53,20 +53,13 @@ func main() {
 
 	entries := []int{96, 97, 98, 99, 400, 401}
 	for _, year := range entries {
-		for i := 1; i < 15; i++ {
+		for i := 1; i < 115; i++ {
 			id := fmt.Sprintf("%d243%03d", year, i)
-			//fmt.Println(id)
 			res.wg.Add(1)
 			guard <- struct{}{}
 			go recieveResponse(id, course, &res, guard)
 		}
 	}
 
-	res.wg.Wait()
-	for i, u := range res.list {
-		fmt.Print(u)
-		if i != len(res.list)-1 {
-			fmt.Print(" ")
-		}
-	}
+	fmt.Print(strings.Join(res.list, " "))
 }
