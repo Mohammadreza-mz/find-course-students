@@ -26,3 +26,5 @@ or
 ```bash
 go run main.go | python3 find-names.py
 ```
+
+Make sure your command-line supports Persian characters so, the print statement doesn't fail.
